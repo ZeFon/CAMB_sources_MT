@@ -2806,58 +2806,6 @@
 
     end subroutine Transfer_SaveMatterPower
 
-    !Sources
-    subroutine Transfer_GetPowerDataNonlin(MTrans, PK_data, in, z_ix)
-    Type(MatterTransferData), intent(in) :: MTrans
-    Type(MatterPowerData) :: PK_data, PK_cdm
-    integer, intent(in) :: in
-    real(dl) h, k,kh
-    integer ik, nz
-    integer z_ix
-
-    nz = 1
-    PK_data%num_k = MTrans%num_q_trans
-    PK_Data%num_z = nz
-
-    allocate(PK_data%matpower(PK_data%num_k,nz))
-    allocate(PK_data%ddmat(PK_data%num_k,nz))
-    allocate(PK_data%nonlin_ratio(PK_data%num_k,nz))
-    allocate(PK_data%log_kh(PK_data%num_k))
-    allocate(PK_data%redshifts(nz))
-
-    call MatterPowerdata_Nullify(PK_cdm)
-
-    PK_data%redshifts = CP%Transfer%Redshifts(z_ix)
-
-    h = CP%H0/100
-
-    if (CP%NonLinear/=NonLinear_None) then
-        if (z_ix>1) stop 'not tested more than one redshift with Nonlinear matter power'
-        call Transfer_GetMatterPowerData(MTrans, PK_cdm, in, z_ix)
-        call NonLinear_GetRatios(PK_cdm)
-    end if
-
-
-    do ik=1,MTrans%num_q_trans
-        kh = MTrans%TransferData(Transfer_kh,ik,1)
-        k = kh*h
-        PK_data%log_kh(ik) = log(kh)
-        PK_data%matpower(ik,z_ix) = &
-            log(MTrans%TransferData(Transfer_tot,ik,z_ix)**2*k &
-            *pi*twopi*h**3*ScalarPower(k,in))
-
-        if (CP%NonLinear/=NonLinear_None) then
-            PK_data%matpower(ik,1) = PK_data%matpower(ik,1) + 2*log(PK_cdm%nonlin_ratio(ik,z_ix))
-        end if
-    end do
-
-    if (CP%NonLinear/=NonLinear_None)  call MatterPowerdata_Free(PK_cdm)
-
-    call MatterPowerdata_getsplines(PK_data)
-
-    end subroutine Transfer_GetPowerDataNonlin
-
-
 
     subroutine Transfer_Get21cmPowerData(MTrans, PK_data, in, z_ix)
     !In terms of k, not k/h, and k^3 P_k /2pi rather than P_k
@@ -2886,7 +2834,7 @@
 
     h = CP%H0/100
 
-    if (CP%NonLinear/=NonLinear_None) then
+    if (CP%NonLinear/=NonLinear_None .and. CP%NonLinear/=NonLinear_Lens) then
         if (z_ix>1) stop 'not tested more than one redshift with Nonlinear 21cm'
         call Transfer_GetMatterPowerData(MTrans, PK_cdm, in, z_ix)
         call NonLinear_GetRatios_All(PK_cdm)
