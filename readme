@@ -1,0 +1,6 @@
+This is a edited version of CAMB_sources.
+
+Features:
+- computes the evolution bias for an HI IM experiments given the temperature.
+- Includes dN/dz for SKA
+- allows for marginalisation over evolution bias, lensing and GR corrections to the angular power spectrum;
