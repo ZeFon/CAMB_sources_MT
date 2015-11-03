@@ -2749,7 +2749,7 @@
 
                 do in = 1, CP%InitPower%nn
                     if (all21) then
-                        call Transfer_Get21cmPowerData(MTrans, PK_data, in, itf)
+                        call Transfer_Get21cmPowerData(MTrans, PK_data, in, itf_PK)
                     else
 						call Transfer_GetMatterPowerData(MTrans, PK_data, in, itf_PK)
 						!JD 08/13 for nonlinear lensing of CMB + LSS compatibility
