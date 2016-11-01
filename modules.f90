@@ -28,15 +28,18 @@
     implicit none
 
     integer, parameter :: window_21cm = 1, window_counts = 2, window_lensing = 3
-	integer, parameter :: gaussian=1, tophat = 2 !window types
-	integer, parameter :: constant=1, antlew = 2, im = 3, skagal = 4, euclid = 5 !distribution of sources
+	integer, parameter :: gaussian=1, tophat = 2, ths =3, err_phot=4 !window types
+	integer, parameter :: powXexp=1, im = 2 !, im = 3, skagal = 4
+	!integer, parameter :: euclid_photo = 5, euclid_spectr = 6, lsst_red=7, lsst_blue=8 
+	!integer, parameter :: radio_continuum=9 !distribution of sources
 
 
     Type TRedWin
         integer kind, wintype, dNdz
         real(dl) Redshift
         real(dl) sigma
-		real(dl) yc2, yc3
+		real(dl) smooth !yc1, yc2, yc3, yc4, smooth
+		real(dl) alpha, z0, beta ! dndz parameters
         real(dl) a
         real(dl) bias, dlog10Ndm
         real(dl) tau, tau_start, tau_end
@@ -83,23 +86,34 @@
     !note this is the total count distribution observed, not a fractional selection function on an underlying distribution
     Type(TRedWin) :: Win
     real(dl), intent(in) :: z
-    real(dl) count_obs_window_z, dz,winamp
+    real(dl) count_obs_window_z, dz, winamp, zmenos, zMais
     real(dl), parameter :: root2pi = 2.506628274_dl
 	
-  	if (Win%wintype == gaussian) then
-  		!gaussian window function
-   		dz = z-Win%Redshift
-   		winamp =  exp(-(dz/Win%sigma)**2/2)*counts_background_z(Win, z)
-		count_obs_window_z =winamp/Win%sigma/root2pi
-   elseif (Win%wintype == tophat) then
-   		!top hat window function
-   		if (z>(Win%Redshift-Win%sigma) .and. z<(Win%Redshift+Win%sigma)) then
-   			winamp = counts_background_z(Win, z)
-   		else
-   			winamp=0
-   		end if
-		count_obs_window_z =winamp/(2*Win%sigma)
-   	end if
+	if (Win%wintype == gaussian) then
+		!gaussian window function
+		dz = z-Win%Redshift
+		winamp =  exp(-(dz/Win%sigma)**2/2)
+		
+	elseif (Win%wintype == tophat) then
+		!top hat window function
+		if (z>(Win%Redshift-Win%sigma) .and. z<(Win%Redshift+Win%sigma)) then
+			winamp = 1
+		else
+			winamp=0
+		end if
+		
+	elseif (Win%wintype == ths) then
+		zmenos=(z-Win%Redshift-Win%sigma)/Win%smooth
+		zMais=(z-Win%Redshift+Win%sigma)/Win%smooth
+		winamp = 1/(2*tanh(Win%sigma/Win%smooth))*(tanh(zMais)-tanh(zmenos))
+		
+	elseif (Win%wintype == err_phot) then
+		zmenos=(Win%Redshift-Win%sigma-z)/(sqrt(2.0)*Win%smooth)
+		zMais=(Win%Redshift+Win%sigma-z)/(sqrt(2.0)*Win%smooth)
+		winamp = 1/(2*erf(Win%sigma/(sqrt(2.0)*Win%smooth)))*(erf(zMais)-erf(zmenos))
+	end if
+	
+	count_obs_window_z =winamp*counts_background_z(Win, z)
    	!not all sources are evenlly distributed in the window so we should include background counts here.  
 	
 	!!!old code
@@ -119,27 +133,49 @@
     real(dl), intent(in) :: z
     real(dl) counts_background_z, winamp
 	
-	if (Win%dNdz == constant) then
-		counts_background_z=1
-	elseif (Win%dNdz == antlew) then
+	if (Win%dNdz == powXexp) then
+		!general function of a power in z at early z and an exponetial decay at higher z
+		counts_background_z= z**Win%alpha*exp(-(z/Win%z0)**Win%beta)
+
+	!elseif (Win%dNdz == antlew) then
 		!function for quasars originally in obs window
-		counts_background_z= z**3*exp(-(z/3.35821)**13)
+	!	counts_background_z= z**3*exp(-(z/3.35821)**13)
 	elseif (Win%dNdz == im) then
 		!HI IM: fit to T_HI(z) from SIMFAST
-		counts_background_z= -0.02485*z**0.2396*z+0.0576
-	elseif (Win%dNdz == skagal) then
+		counts_background_z= -0.02485*z**2+0.2396*z+0.0576
+	!elseif (Win%dNdz == skagal) then
 		!Yahya et al. arxiv:1412.4700. Normalizations are unnecessary
-		counts_background_z=z**Win%yc2*exp(-Win%yc3*z)
-	elseif (Win%dNdz == euclid) then
+	!	counts_background_z=z**Win%yc2*exp(-Win%yc3*z)
+	!elseif (Win%dNdz == euclid_photo) then
 		!for photometric galaxies. arXiv:1505.06179
-		counts_background_z= z**2*exp(-(z/0.63739)**1.5)
+	!	counts_background_z= z**2*exp(-(z/0.63739)**1.5)
+	!elseif (Win%dNdz == euclid_spectr) then
+		!for spectroscopic galaxy survey fit from Ha LF of arXiv:1603.01453
+	!	counts_background_z= 0.012*(z/0.024)**3.188*exp(-(z/0.024)**0.57)
+		!units per arcmin^2
+	!elseif (Win%dNdz == lsst_red) then
+		!N(Z) computed from arxiv:1505.07596; fit to determine parameters
+		!threshold mag r=26.3
+	!	counts_background_z= 9.282*(z/0.899)**1.675*exp(-(z/0.899)**3.474)
+		!units per arcmin^2
+	!elseif (Win%dNdz == lsst_blue) then
+		!N(Z) computed from arxiv:1505.07596; fit to determine parameters
+		!threshold mag r=26.3
+		!counts_background_z= 67.235*(z/0.707)**1.016*exp(-(z/0.707)**1.424)
+		!units per arcmin^2
+	!elseif (Win%dNdz == radio_continuum) then
+		!radio continuum for dn/dz*b(z)
+		!only to be used with b(i)=1 and for density only
+		!counts_background_z= Win%yc1*z**Win%yc2*exp(-(z/Win%yc3)**Win%yc4)
+			!units per arcmin^2
 	else
 		counts_background_z = 1
     	!This is the special case where sources are evenlly distributed inside the window function
     end if
 	
-	
-	!!!Old code with which I desagree. Speak with Lewis about this. 
+	!Note that amplitudes are irrelevant but in some were keep since they were computed fits
+	 
+	!!!Old code with which I desagree. 
 
     !counts_background_z = count_obs_window_z(Win, z, winamp)
     !This is the special case where you observe all of the sources
@@ -2593,13 +2629,13 @@
         if (CP%InitPower%nn>1)  write(*,*) 'Power spectrum : ', in
         do j_PK=1, CP%Transfer%PK_num_redshifts
             j = CP%Transfer%PK_redshifts_index(j_PK)
-            write(*,'("at z =",f7.3," sigma8 (all matter) = ",f7.4)') &
+            write(*,'("at z eq",f7.3," sigma8 (all matter) = ",f7.4)') &
                 CP%Transfer%redshifts(j), MTrans%sigma_8(j_PK,in)
         end do
         if (get_growth_sigma8) then
             do j_PK=1, CP%Transfer%PK_num_redshifts
                 j = CP%Transfer%PK_redshifts_index(j_PK)
-                write(*,'("at z =",f7.3," sigma8^2_vd/sigma8  = ",f7.4)') &
+                write(*,'("at z eq",f7.3," sigma8^2_vd/sigma8  = ",f7.4)') &
                     CP%Transfer%redshifts(j), MTrans%sigma2_vdelta_8(j_PK,in)/MTrans%sigma_8(j_PK,in)
             end do
         end if
@@ -2749,7 +2785,7 @@
 
                 do in = 1, CP%InitPower%nn
                     if (all21) then
-                        call Transfer_Get21cmPowerData(MTrans, PK_data, in, itf_PK)
+                        call Transfer_Get21cmPowerData(MTrans, PK_data, in, itf)
                     else
 						call Transfer_GetMatterPowerData(MTrans, PK_data, in, itf_PK)
 						!JD 08/13 for nonlinear lensing of CMB + LSS compatibility

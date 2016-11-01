@@ -114,6 +114,12 @@
         	RedWin%wintype = gaussian
         elseif (Zwintype=='tophat') then
         	RedWin%wintype = tophat
+		elseif (Zwintype=='smooth_tophat') then
+			RedWin%wintype = ths
+			RedWin%smooth = Ini_Read_Double('redshift_smooth('//trim(numstr)//')')
+		elseif (Zwintype=='err_phot') then
+			RedWin%wintype = err_phot
+			RedWin%smooth = Ini_Read_Double('redshift_smooth('//trim(numstr)//')')
         else
         	write (*,*) i, 'Error: unknown type of observational window function'//trim(Zwintype)
         	stop
@@ -123,18 +129,33 @@
 			RedWin%bias = Ini_Read_Double('redshift_bias('//trim(numstr)//')')
             RedWin%dlog10Ndm = Ini_Read_Double('redshift_dlog10Ndm('//trim(numstr)//')',0.d0)
             ZdNdz = Ini_Read_String('redshift_dNdz('//trim(numstr)//')')
-            if (ZdNdz=='constant') then
-            	RedWin%dNdz = constant
-            elseif (ZdNdz=='antlew') then
-            	RedWin%dNdz = antlew
+            !if (ZdNdz=='constant') then
+            !	RedWin%dNdz = constant
+            if (ZdNdz=='powXexp') then
+            	RedWin%dNdz = powXexp
+            	RedWin%alpha = Ini_Read_Double('redshift_dndz_alpha('//trim(numstr)//')')
+            	RedWin%z0 = Ini_Read_Double('redshift_dndz_z0('//trim(numstr)//')')
+            	RedWin%beta = Ini_Read_Double('redshift_dndz_beta('//trim(numstr)//')')
 			elseif (ZdNdz=='im') then
 				RedWin%dNdz = im
-            elseif (ZdNdz=='skagal') then
-            	RedWin%dNdz = skagal
-            	RedWin%yc2 = Ini_Read_Double('redshift_yc2('//trim(numstr)//')')
-            	RedWin%yc3 = Ini_Read_Double('redshift_yc3('//trim(numstr)//')')
-	        elseif (ZdNdz=='euclid') then
-	            	RedWin%dNdz = euclid
+            !elseif (ZdNdz=='skagal') then
+            	!RedWin%dNdz = skagal
+            	!RedWin%yc2 = Ini_Read_Double('redshift_yc2('//trim(numstr)//')')
+            	!RedWin%yc3 = Ini_Read_Double('redshift_yc3('//trim(numstr)//')')
+	        !elseif (ZdNdz=='euclid_photo') then
+	        !    	RedWin%dNdz = euclid_photo
+			!elseif (ZdNdz=='euclid_spectr') then
+			!	RedWin%dNdz = euclid_spectr
+			!elseif (ZdNdz=='lsst_red') then
+			!	RedWin%dNdz = lsst_red
+			!elseif (ZdNdz=='lsst_blue') then
+			!	RedWin%dNdz = lsst_blue
+			!elseif (ZdNdz=='radio_cont') then
+			!	RedWin%dNdz = radio_continuum
+			!	RedWin%yc1 = Ini_Read_Double('redshift_yc1('//trim(numstr)//')')
+			!	RedWin%yc2 = Ini_Read_Double('redshift_yc2('//trim(numstr)//')')
+			!	RedWin%yc3 = Ini_Read_Double('redshift_yc3('//trim(numstr)//')')
+			!	RedWin%yc4 = Ini_Read_Double('redshift_yc4('//trim(numstr)//')')
             else
             	write (*,*) i, 'Error: unknown type of source: assumed constant probability.'//trim(ZdNdz)
             end if
