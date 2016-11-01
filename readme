@@ -1,6 +1,10 @@
-This is an edited version of CAMB_sources.
+This is an edited version of CAMB_sources that computes the angular power spectrum for combination of DM tracers. 
 
 Features:
-- computes the evolution bias for an HI IM experiments given the temperature.
-- Includes dN/dz for SKA
+- Allow for the HI Temperature as selection function; 
+- computes the evolution bias for an HI IM experiments given the temperature;
+- Allows for a general redshift distribution of sources dn/dz\propto z^alpha exp(-(z/z0)^beta);
+- Has more observational window functions: top hat, smooth top hat and for the error function for photo-z surveys;
 - allows for marginalisation over evolution bias, lensing and GR corrections to the angular power spectrum;
+
+If you use this code please cite arXiv:1507.04605. 
